@@ -75,12 +75,16 @@ namespace MouseEvent
         private POINT localPoint = new POINT(0, 0);
         private POINT remotePoint = new POINT(0, 0);
         private POINT prePoint = new POINT(0, 0);
+        private POINT tmpPoint = new POINT(0, 0);
 
         private int WM_KEYDOWN = 0x100;
         private int WM_KEYUP = 0x101;
 
         private int WM_SYSKEYDOWN = 0x0104;
         private int WM_SYSKEYUP = 0x105;
+
+        private int MOUSEEVENTF_ABSOLUTE = 0x8000;
+        private int MOUSEEVENTF_MOVE = 0x0001;
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
@@ -102,11 +106,19 @@ namespace MouseEvent
 
         public string name { get; private set; }
 
-        //isLocal:true, 本地鼠标移动 false，远程鼠标移动
+        /// <summary>
+        /// Mouse move event callback
+        /// </summary>
+        /// <param name="isLocal">true: local mouse move; false: remote mouse move</param>
+        /// <param name="pt"></param>
         public delegate void MouseMoveEventDelegate(bool isLocal, POINT pt);
         public MouseMoveEventDelegate mouseMoveEvent = delegate { };
 
-        //isLocal: true, 将状态转换为本地状态 false，将状态转换为remote状态
+        /// <summary>
+        /// Change mouse own callback (local or remote)
+        /// </summary>
+        /// <param name="isLocal">true: change status to local  false: change status to remote</param>
+        /// <param name="pt"></param>
         public delegate void MouseOwnChangeDelegate(bool isLocal, POINT pt);
         public MouseOwnChangeDelegate mouseOwnChange = delegate { };
 
@@ -141,13 +153,15 @@ namespace MouseEvent
             startHook();
         }
 
-        //cursor拥有状态，true为本地拥有，false为remote拥有
+        //Which one owned the cursor (local or remote),  true: local; false: remote;
         private bool cursorLocalOwn = true;
 
-        //更改鼠标拥有状态
-        //输入：isLocal: 是否为本地点击事件
-        //返回：false：继续响应鼠标点击事件， true：不响应鼠标点击事件
-        public bool changeCursorOwn(bool isLocal){
+        /// <summary>
+        /// Mouse click, judged whether change cursor own
+        /// </summary>
+        /// <param name="isLocal">true: local mouse click; false: remote or inject mouse click event</param>
+        /// <returns>false: system continue mouse event process; true: drop this click event</returns>
+        private bool mouseClick(bool isLocal){
             Console.WriteLine("isLocal " + isLocal);
             if (isLocal)
             {
@@ -157,8 +171,10 @@ namespace MouseEvent
                 {
                     //remote ---> local
                     cursorLocalOwn = true;
-                    //存储remotePoint;
-                    GetCursorPos(ref remotePoint); 
+                    //save remotePoint;
+                    GetCursorPos(ref remotePoint);
+                    tmpPoint.X = localPoint.X;
+                    tmpPoint.Y = localPoint.Y;
                     mouseOwnChange(true, localPoint);
                     return true;
                 }
@@ -171,8 +187,10 @@ namespace MouseEvent
                 {
                     //local ---> remote
                     cursorLocalOwn = false;
-                    //存储localPoint;
-                    GetCursorPos(ref localPoint); 
+                    //save localPoint;
+                    GetCursorPos(ref localPoint);
+                    prePoint.X = localPoint.X;
+                    prePoint.Y = localPoint.Y;
                     mouseOwnChange(false, remotePoint);
                     return true;
                 }
@@ -197,23 +215,24 @@ namespace MouseEvent
 
         private int mouseHookCallback(int code, IntPtr wParam, ref KBDLLMOUSEHOOKSTRUCT lParam)
         {
-            //result为0表示将该消息传递给windows消息处理函数，result为1表示丢弃该消息。
+            //result 0: windows continue process this event; 1: system drop this event
             int result = 0;
             try
             {
                 if (((lParam.flags & LLMHF_INJECTED) == 0) && ((lParam.flags & LLMHF_LOWER_IL_INJECTED) == 0))
                 {
-                    //本地鼠标
+                    //Local mouse event
                     if (wParam.ToInt32() == WM_LBUTTONDOWN)
                     {
-                        Console.WriteLine("A flags: " + lParam.flags);
-                        //鼠标点击
-                        result = changeCursorOwn(true) ? 1: 0;
+                        //Mouse click
+                        result = mouseClick(true) ? 1: 0;
                     }
                     else if(wParam.ToInt32() == WM_MOUSEMOVE){                        
                         if (cursorLocalOwn)
                         {
-                            mouseMoveEvent(true, lParam.pt); //鼠标移动, 本地鼠标
+                            mouseMoveEvent(true, lParam.pt); //local mouse move
+                            localPoint.X = lParam.pt.X;
+                            localPoint.Y = lParam.pt.Y;
                         }
                         else
                         {
@@ -222,34 +241,38 @@ namespace MouseEvent
                             localPoint.X = localPoint.X + dx;
                             localPoint.Y = localPoint.Y + dy;
                             mouseMoveEvent(true, localPoint);
-                            result = 1;   //鼠标不移动
+                            result = 1;   //mouse does not move
                         }
                     }
                 }
                 else
                 {
-                    //远程鼠标
+                    
+                    //Inject mouse event
+                    if (wParam.ToInt32() == WM_MOUSEMOVE && lParam.pt.X <= localPoint.X + 1 && lParam.pt.X >= localPoint.X - 1
+                        && lParam.pt.Y <= localPoint.Y + 1 && lParam.pt.Y >= localPoint.Y - 1)
+                    {
+                        Console.WriteLine("Inject mouse event {0} {1}", lParam.pt.X, lParam.pt.Y);
+                        return result;
+                    }
+                    
                     if (wParam.ToInt32() == WM_LBUTTONDOWN)
                     {
-                        //鼠标点击
-                        Console.WriteLine("B flags: " + lParam.flags);
-                        result = changeCursorOwn(false) ? 1 : 0;
+                        //mouse click
+                        result = mouseClick(false) ? 1 : 0;
                     }
                     else if (wParam.ToInt32() == WM_MOUSEMOVE)
                     {
                         if (!cursorLocalOwn)
                         {
+                            remotePoint.X = lParam.pt.X;
+                            remotePoint.Y = lParam.pt.Y;
                             mouseMoveEvent(false, lParam.pt);
                         }
                         else
                         {
-                            //int dx = lParam.pt.X - prePoint.X;
-                            //int dy = lParam.pt.Y - prePoint.Y;
-                            //remotePoint.X = remotePoint.X + dx;
-                            //remotePoint.Y = remotePoint.Y + dy;
-                            //Console.WriteLine("x:{0} X:{1} dx:{2} y:{3} y:{4} dy:{5}", lParam.pt.X, prePoint.X, dx, lParam.pt.Y, prePoint.Y, dy);
                             mouseMoveEvent(false, lParam.pt);
-                            result = 1;   //鼠标不移动
+                            result = 1;   //mouse does not move
                         }
                     }
                 }

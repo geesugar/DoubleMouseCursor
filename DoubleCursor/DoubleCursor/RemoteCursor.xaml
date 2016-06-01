@@ -1,7 +1,7 @@
 ﻿<Window x:Class="DoubleCursor.RemoteCursor"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="RemoteCursor" Height="40" Width="40" Background="Transparent" AllowsTransparency="True" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False">
+        Title="RemoteCursor" Height="25" Width="25" Background="Transparent" AllowsTransparency="True" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False">
     <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
         <Image Name="localCursorImg" Stretch="Fill"></Image>
     </Grid>

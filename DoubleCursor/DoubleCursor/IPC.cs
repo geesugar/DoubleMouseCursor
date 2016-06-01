@@ -13,6 +13,7 @@ using System.IO;
 using System.Windows.Media;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows;
 
 namespace DoubleCursor
 {
@@ -24,11 +25,15 @@ namespace DoubleCursor
         RemoteCursor remoteCursor;
 
         #region PInvoke
-        [DllImport("user32.dll")]
+
+        [DllImport("user32.dll", EntryPoint = "mouse_event")]
         private static extern void mouse_event(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
         public static extern bool SetWindowPos(IntPtr hWnd, int hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(ref MouseEvent.Hook.POINT point);
 
         private int MOUSEEVENTF_ABSOLUTE = 0x8000;
         private int MOUSEEVENTF_MOVE = 0x0001;
@@ -72,13 +77,20 @@ namespace DoubleCursor
             Image remoteImg = gd.Children[0] as Image;
             remoteImg.Source = source;
             remoteCursor.Show();
-
         }
 
         public void start()
         {
-            Thread ipcThread = new Thread(ipcThreadProc);
-            ipcThread.Start();
+            MouseEvent.Hook.POINT mousePos = new MouseEvent.Hook.POINT(0, 0);
+            GetCursorPos(ref mousePos); 
+            var hLocalCursor = new WindowInteropHelper(localCursor);
+            var hLocalIndicator = new WindowInteropHelper(localIndicator);
+            var hRemoteCursor = new WindowInteropHelper(remoteCursor);
+            var hRemoteIndicator = new WindowInteropHelper(remoteIndicator);
+            SetWindowPos(hLocalCursor.Handle, -1, mousePos.X, mousePos.Y, 0, 0, 0x0040 | 0x0001);
+            SetWindowPos(hLocalIndicator.Handle, -1, mousePos.X, mousePos.Y, 0, 0, 0x0040 | 0x0001);
+            SetWindowPos(hRemoteCursor.Handle, -1, mousePos.X, mousePos.Y, 0, 0, 0x0040 | 0x0001);
+            SetWindowPos(hRemoteIndicator.Handle, -1, mousePos.X, mousePos.Y, 0, 0, 0x0040 | 0x0001);
         }
 
         public void exitProcess()
@@ -102,15 +114,20 @@ namespace DoubleCursor
                 var hRemoteIndicator = new WindowInteropHelper(remoteIndicator);
                 SetWindowPos(hRemoteCursor.Handle, -1, pt.X, pt.Y, 0, 0, 0x0040 | 0x0001);
                 SetWindowPos(hRemoteIndicator.Handle, -1, pt.X, pt.Y, 0, 0, 0x0040 | 0x0001);
-                //remoteCursor.Show();
-                //remoteIndicator.Show();
             }
         }
 
-        //isLocal: true, 将状态转换为本地状态 false，将状态转换为remote状态
+        /// <summary>
+        /// Change cursor own status
+        /// </summary>
+        /// <param name="isLocal">true: remote->local; false: local->remote</param>
+        /// <param name="pt">move cursor to the position</param>
         private void MouseOwnChange(bool isLocal, MouseEvent.Hook.POINT pt){
-            //移动cursor到pt
-            mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE, pt.X, pt.Y, 0, 0);
+            //move cursor to pt
+            Console.WriteLine("move cursor to x:{0} y:{1}", pt.X, pt.Y);
+            int x = (int)(pt.X * 65535 / SystemParameters.PrimaryScreenWidth);
+            int y = (int)(pt.Y * 65535 / SystemParameters.PrimaryScreenHeight);
+            mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE, x, y, 0, 0);
 
             if (isLocal)
             {
@@ -122,63 +139,6 @@ namespace DoubleCursor
                 localCursor.Show();
                 remoteCursor.Hide();
             }
-        }
-
-        private void remoteMove(int posx, int posy)
-        {
-
-        }
-
-        private void remoteClick()
-        {
-
-        }
-
-        private void ipcThreadProc(Object o)
-        {
-            Console.WriteLine("IPC thread start.... port:{0}", port);
-            TcpClient client = null;
-            NetworkStream stream = null;
-            try
-            {
-                client = new TcpClient("localhost", port);
-                stream = client.GetStream();
-            }
-            catch (SocketException excption)
-            {
-                Console.WriteLine(excption.StackTrace);
-                //exitProcess();
-                //return;
-            }
-
-            //while (isRuning)
-            //{
-            //    byte[] bytes = new Byte[1024];
-            //    string data = string.Empty;
-            //    int length = stream.Read(bytes, 0, bytes.Length);
-            //    if (length > 0)
-            //    {
-            //        data = Encoding.Default.GetString(bytes, 0, length);
-            //        //Console.WriteLine("receive data: " + data);
-                   
-            //        JObject obj = JObject.Parse(data);
-            //        //Console.WriteLine("type: " + (string)obj["type"] + " length: " + obj.Count);
-            //        string cmdType = (string)obj["type"];
-            //        if (cmdType == "remoteMove")
-            //        {
-            //            int posx = (int)obj["posx"];
-            //            int posy = (int)obj["posy"];
-            //            if (posx >= 0 && posx <= 5000 && posy >= 0 && posy <= 5000)
-            //            {
-            //                remoteMove(posx, posy);
-            //            }
-            //        }
-            //        else if (cmdType == "remoteClick")
-            //        {
-            //            remoteClick();
-            //        }
-            //    }
-            //}
         }
     }
 }

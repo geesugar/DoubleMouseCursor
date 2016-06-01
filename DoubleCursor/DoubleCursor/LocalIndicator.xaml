@@ -3,6 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MainWindow" Height="30" Width="30" Background="Transparent" AllowsTransparency="True" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False">
     <Grid VerticalAlignment="Bottom" HorizontalAlignment="Right">
-        <Ellipse Width="15" Height="15" Fill="Blue" Stroke="Black"></Ellipse>
+        <Ellipse Width="10" Height="10" Fill="Blue" Stroke="Black"></Ellipse>
     </Grid>
 </Window>

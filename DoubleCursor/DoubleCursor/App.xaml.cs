@@ -23,13 +23,11 @@ namespace DoubleCursor
         [STAThread]
         public static void Main(string[] args)
         {
-            Console.WriteLine("Main");
-
             bool isStart = false;
             System.Threading.Mutex m = new System.Threading.Mutex(true, "DoubleCursorStart", out isStart);
             if (!isStart)
             {
-                Console.WriteLine("This modlue has instanced.");
+                Console.WriteLine("This module has instanced.");
                 return;
             }
 
@@ -38,7 +36,6 @@ namespace DoubleCursor
             ipc.start();
  
             DoubleCursor.App app = new DoubleCursor.App();
-            //app.InitializeComponent();
             app.Run();
         }
     }
