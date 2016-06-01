@@ -2,6 +2,7 @@ const util = require('util');
 const events = require('events');
 const net = require('net');
 const robot = require('robotjs');
+var Composer = require('stream-pkg');
 
 
 const listenPort = 6231;
@@ -9,49 +10,68 @@ var mouseServer = null;
 var mouseSocket = null;
 var screensize = robot.getScreenSize();
 
-function startDoubleMouseServer(){
-	mouseServer = net.createServer(function(socket){
-		console.log('create socket server.');
-		mouseSocket = socket;
+function processMsg(pkg) {
+	console.log("pkg "  + JSON.stringify(pkg));
+    if (pkg.type === 'click') {
+        robot.mouseClick();
+    } else if (pkg.type === 'move') {
+        var x = Math.round((screensize.width * pkg.pos.x) / 100);
+        var y = Math.round((screensize.height * pkg.pos.y) / 100);
+        robot.moveMouse(x, y);
+    }
+}
 
-		mouseSocket.on('end', function(){
-			console.log('socket end.');
-		})
+function processMsgs(pkgs) {
+	for (var i = 0; i < pkgs.length; i++) {
+		processMsg(pkgs[i]);
+	}
+}
 
-		mouseSocket.on('error', function(){
-			console.log('socket error.');
-		})
+function startDoubleMouseServer() {
+    mouseServer = net.createServer(function(socket) {
+        console.log('create socket server.');
+        mouseSocket = socket;
+        mouseSocket.composer = new Composer();
 
-		mouseSocket.on('close', function(){
-			console.log('socket close.');
-		})
+        mouseSocket.on('end', function() {
+            console.log('socket end.');
+        })
 
-		mouseSocket.on('data', function(data){
-			console.log('receive data ' + data);
-			data = JSON.parse(data);
-			if(data.type === 'click'){
-				robot.mouseClick();
-			}else if(data.type === 'move'){
-				var x = Math.round((screensize.width * data.pos.x) /100);
-				var y = Math.round((screensize.width * data.pos.y) /100);
-				robot.moveMouse(x, y);
-			}
-		})
-	});
+        mouseSocket.on('error', function() {
+            console.log('socket error.');
+        })
 
-	mouseServer.on('error', function(err){
-		console.log('server error. ' + err);
-	})
+        mouseSocket.on('close', function() {
+            console.log('socket close.');
+        })
 
-	mouseServer.on('close', function(){
-		console.log('server close.');
-	})
+        mouseSocket.on('data', function(data) {
+            mouseSocket.composer.feed(data);
+        })
 
-	mouseServer.on('connection', function(){
-		console.log('server connection');
-	})	
+        mouseSocket.composer.on('data', function(data) {
+            var pkg = JSON.parse(data.toString());
+            if (pkg instanceof Array) {
+                processMsgs(pkg);
+            } else {
+                processMsg(pkg);
+            }
+        })
+    });
 
-	mouseServer.listen(listenPort, 'localhost');
+    mouseServer.on('error', function(err) {
+        console.log('server error. ' + err);
+    })
+
+    mouseServer.on('close', function() {
+        console.log('server close.');
+    })
+
+    mouseServer.on('connection', function() {
+        console.log('server connection');
+    })
+
+    mouseServer.listen(listenPort, '0.0.0.0');
 }
 
 startDoubleMouseServer();

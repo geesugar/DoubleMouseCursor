@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "robotjs": "^0.4.4"
+    "robotjs": "^0.4.4",
+    "stream-pkg": "0.0.5"
   }
 }
