@@ -1,0 +1,9 @@
+﻿<Window x:Class="DoubleCursor.LocalCursor"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:res="clr-namespace:DoubleCursor.Properties"
+        Title="LocalCursor" Height="40" Width="40" Background="Transparent" AllowsTransparency="True" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False">
+    <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
+        <Image Name="localCursorImg" Stretch="Fill"></Image>
+    </Grid>
+</Window>

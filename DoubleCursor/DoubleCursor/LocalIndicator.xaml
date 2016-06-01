@@ -1,0 +1,8 @@
+﻿<Window x:Class="DoubleCursor.LocalIndicator"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MainWindow" Height="30" Width="30" Background="Transparent" AllowsTransparency="True" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False">
+    <Grid VerticalAlignment="Bottom" HorizontalAlignment="Right">
+        <Ellipse Width="15" Height="15" Fill="Blue" Stroke="Black"></Ellipse>
+    </Grid>
+</Window>
