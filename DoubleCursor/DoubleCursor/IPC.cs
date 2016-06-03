@@ -55,7 +55,7 @@ namespace DoubleCursor
             localIndicator = new LocalIndicator();
             remoteIndicator = new RemoteIndicator();
             localIndicator.Show();
-            remoteIndicator.Show();
+            remoteIndicator.Hide();
           
             localCursor = new LocalCursor();
             MemoryStream localImagMemory = new MemoryStream();
@@ -76,7 +76,7 @@ namespace DoubleCursor
             gd = remoteCursor.Content as Grid;
             Image remoteImg = gd.Children[0] as Image;
             remoteImg.Source = source;
-            remoteCursor.Show();
+            remoteCursor.Hide();
         }
 
         public void start()
@@ -110,6 +110,12 @@ namespace DoubleCursor
             }
             else
             {
+                if (!remoteActive)
+                {
+                    remoteActive = true;
+                    remoteCursor.Show();
+                    remoteIndicator.Show();
+                }
                 var hRemoteCursor = new WindowInteropHelper(remoteCursor);
                 var hRemoteIndicator = new WindowInteropHelper(remoteIndicator);
                 SetWindowPos(hRemoteCursor.Handle, -1, pt.X, pt.Y, 0, 0, 0x0040 | 0x0001);
